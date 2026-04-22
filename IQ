@@ -1,0 +1,240 @@
+-- MaxCheats: Supremacy V12.4 (The "Stability" Update)
+-- Updated: 24 Coin Path (Fixed Coord #17) | Smooth Dragging | Echo Ripples | Anti-Void Float
+
+local UIS = game:GetService("UserInputService")
+local Player = game.Players.LocalPlayer
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- Theme Colors
+local Crimson = Color3.fromRGB(180, 0, 0)
+local DarkGray = Color3.fromRGB(22, 22, 22)
+local Background = Color3.fromRGB(10, 10, 10)
+local HeaderGray = Color3.fromRGB(18, 18, 18)
+local CrimsonRed = Color3.fromRGB(153, 0, 0)
+
+local ParentBase = (gethui and gethui()) or CoreGui
+local Minimised = false
+local CoinFarmActive = false
+local SelectedPlayer = nil
+
+local MenuSize = (UIS.TouchEnabled and not UIS.KeyboardEnabled) and UDim2.new(0, 420, 0, 400) or UDim2.new(0, 520, 0, 500)
+
+-- [[ UTILITY: ECHO RIPPLE EFFECT ]]
+local function CreateRipple(obj)
+    task.spawn(function()
+        local mouse = Player:GetMouse()
+        local relPos = Vector2.new(mouse.X - obj.AbsolutePosition.X, mouse.Y - obj.AbsolutePosition.Y)
+        
+        local ripple = Instance.new("Frame")
+        ripple.BackgroundColor3 = Color3.new(1, 1, 1)
+        ripple.BackgroundTransparency = 0.6
+        ripple.ZIndex = obj.ZIndex + 1
+        ripple.Position = UDim2.new(0, relPos.X, 0, relPos.Y)
+        ripple.Size = UDim2.new(0, 0, 0, 0)
+        ripple.AnchorPoint = Vector2.new(0.5, 0.5)
+        ripple.Parent = obj
+        
+        Instance.new("UICorner", ripple).CornerRadius = UDim.new(1, 0)
+        obj.ClipsDescendants = true
+        
+        local tween = TweenService:Create(ripple, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, 500, 0, 500),
+            BackgroundTransparency = 1
+        })
+        
+        tween:Play()
+        tween.Completed:Wait()
+        ripple:Destroy()
+    end)
+end
+
+-- 1. MAIN UI
+local ScreenGui = Instance.new("ScreenGui", ParentBase)
+ScreenGui.Name = "MaxCheats_V12_4"
+
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = MenuSize
+Main.Position = UDim2.new(0.5, -Main.Size.X.Offset/2, 0.5, -Main.Size.Y.Offset/2)
+Main.BackgroundColor3 = Background; Main.BorderSizePixel = 0; Main.Active = true; Main.ClipsDescendants = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+Instance.new("UIStroke", Main).Color = Crimson
+
+-- [[ LABELS ]]
+local VersionLabel = Instance.new("TextLabel", Main)
+VersionLabel.Text = "v1.0 beta"; VersionLabel.TextColor3 = CrimsonRed; VersionLabel.Size = UDim2.new(0, 350, 0, 20); VersionLabel.Position = UDim2.new(0, 12, 1, -45)
+VersionLabel.BackgroundTransparency = 1; VersionLabel.Font = Enum.Font.Code; VersionLabel.TextSize = 13; VersionLabel.TextXAlignment = Enum.TextXAlignment.Left; VersionLabel.ZIndex = 8
+
+local BottomLabel = Instance.new("TextLabel", Main)
+BottomLabel.Text = "This menu is still in beta so expect bugs and more features to come"; BottomLabel.TextColor3 = CrimsonRed; BottomLabel.Size = UDim2.new(0, 350, 0, 20); BottomLabel.Position = UDim2.new(0, 12, 1, -25)
+BottomLabel.BackgroundTransparency = 1; BottomLabel.Font = Enum.Font.GothamMedium; BottomLabel.TextSize = 11; BottomLabel.TextXAlignment = Enum.TextXAlignment.Left; BottomLabel.ZIndex = 8
+
+-- 2. LIVE BACKGROUND
+local WallPaper = Instance.new("Frame", Main)
+WallPaper.Size = UDim2.new(1, 0, 1, 0); WallPaper.BackgroundTransparency = 1; WallPaper.ClipsDescendants = true
+for i = 1, 50 do
+    local star = Instance.new("Frame", WallPaper)
+    star.Size = UDim2.new(0, 2, 0, 2); star.BackgroundColor3 = Color3.new(1,1,1); star.BackgroundTransparency = 0.7; star.Position = UDim2.new(math.random(), 0, math.random(), 0)
+    Instance.new("UICorner", star).CornerRadius = UDim.new(1, 0)
+    task.spawn(function()
+        while star.Parent do
+            local move = TweenService:Create(star, TweenInfo.new(math.random(10, 20), Enum.EasingStyle.Linear), {Position = UDim2.new(math.random(), 0, math.random(), 0)})
+            move:Play(); move.Completed:Wait()
+        end
+    end)
+end
+
+-- 3. HEADER
+local Header = Instance.new("Frame", Main)
+Header.Size = UDim2.new(1, 0, 0, 42); Header.BackgroundColor3 = HeaderGray; Header.ZIndex = 5
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 12)
+
+local Brand = Instance.new("TextLabel", Header)
+Brand.Name = "MainTitle"
+Brand.Text = "MaxCheats | IQ Test Laser Tower🧠"; Brand.Size = UDim2.new(1, -60, 1, 0); Brand.Position = UDim2.new(0, 20, 0, 0)
+Brand.BackgroundTransparency = 1; Brand.TextColor3 = Crimson; Brand.Font = Enum.Font.GothamBold; Brand.TextSize = 16; Brand.TextXAlignment = Enum.TextXAlignment.Left; Brand.ZIndex = 10
+
+task.spawn(function()
+    while task.wait() do
+        local tween = TweenService:Create(Brand, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextColor3 = Color3.fromRGB(255, 50, 50)})
+        tween:Play(); tween.Completed:Wait()
+        local tween2 = TweenService:Create(Brand, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextColor3 = Crimson})
+        tween2:Play(); tween2.Completed:Wait()
+    end
+end)
+
+local TopLabel = Instance.new("TextLabel", Header)
+TopLabel.Visible = false -- Hidden to prevent overlap with Brand text
+
+local MinBtn = Instance.new("TextButton", Header)
+MinBtn.Text = "-"; MinBtn.Size = UDim2.new(0, 30, 0, 30); MinBtn.Position = UDim2.new(1, -40, 0, 6); MinBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40); MinBtn.TextColor3 = Color3.new(1, 1, 1); MinBtn.ZIndex = 11; Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 8)
+
+-- 4. CONTAINER
+local Container = Instance.new("Frame", Main)
+Container.Size = UDim2.new(1, -40, 0, 290); Container.Position = UDim2.new(0, 20, 0, 115); Container.BackgroundColor3 = Color3.fromRGB(15, 15, 15); Container.BackgroundTransparency = 0.4; Instance.new("UICorner", Container).CornerRadius = UDim.new(0, 10); Instance.new("UIStroke", Container).Color = Color3.fromRGB(45, 45, 45)
+
+local TabBar = Instance.new("Frame", Main)
+TabBar.Size = UDim2.new(1, -40, 0, 40); TabBar.Position = UDim2.new(0, 20, 0, 65); TabBar.BackgroundTransparency = 1
+local TabList = Instance.new("UIListLayout", TabBar); TabList.FillDirection = Enum.FillDirection.Horizontal; TabList.Padding = UDim.new(0, 15); TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function CreateTab(name, active)
+    local btn = Instance.new("TextButton", TabBar)
+    btn.Size = UDim2.new(0, 90, 1, 0); btn.BackgroundColor3 = active and Crimson or DarkGray; btn.Text = name:upper(); btn.TextColor3 = Color3.new(1, 1, 1); btn.Font = Enum.Font.GothamBold; Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local frame = Instance.new("Frame", Container); frame.Size = UDim2.new(1, -20, 1, -20); frame.Position = UDim2.new(0, 10, 0, 10); frame.BackgroundTransparency = 1; frame.Visible = active
+    btn.MouseButton1Click:Connect(function()
+        CreateRipple(btn)
+        for _, v in pairs(TabBar:GetChildren()) do if v:IsA("TextButton") then v.BackgroundColor3 = DarkGray end end
+        btn.BackgroundColor3 = Crimson; for _, f in pairs(Container:GetChildren()) do if f:IsA("Frame") then f.Visible = false end end
+        frame.Visible = true
+    end)
+    return frame
+end
+
+local FarmTab = CreateTab("Farm", true)
+local CombatTab = CreateTab("Combat", false)
+local ItemsTab = CreateTab("Items", false)
+
+-- 5. COMBAT
+local Selector = Instance.new("Frame", CombatTab); Selector.Size = UDim2.new(1, 0, 0, 40); Selector.BackgroundTransparency = 1; Selector.ZIndex = 5
+local DropBtn = Instance.new("TextButton", Selector); DropBtn.Size = UDim2.new(0.78, 0, 1, 0); DropBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25); DropBtn.Text = "Select Username..."; DropBtn.TextColor3 = Crimson; DropBtn.Font = Enum.Font.GothamBold; Instance.new("UICorner", DropBtn).CornerRadius = UDim.new(0, 6)
+local TPBtn = Instance.new("TextButton", Selector); TPBtn.Size = UDim2.new(0.18, 0, 1, 0); TPBtn.Position = UDim2.new(0.82, 0, 0, 0); TPBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); TPBtn.Text = "TP"; TPBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", TPBtn).CornerRadius = UDim.new(0, 6)
+local List = Instance.new("ScrollingFrame", CombatTab); List.Size = UDim2.new(0.78, 0, 0, 120); List.Position = UDim2.new(0, 0, 0, 45); List.BackgroundColor3 = Color3.fromRGB(20, 20, 20); List.Visible = false; List.ZIndex = 100; List.ScrollBarThickness = 2; Instance.new("UIListLayout", List)
+
+local function RefreshPlayers()
+    for _, v in pairs(List:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= Player then
+            local b = Instance.new("TextButton", List); b.Size = UDim2.new(1, 0, 0, 30); b.BackgroundColor3 = Color3.fromRGB(25, 25, 25); b.Text = p.Name; b.TextColor3 = Color3.new(1, 1, 1); b.ZIndex = 101
+            b.MouseButton1Click:Connect(function() CreateRipple(b); SelectedPlayer = p; DropBtn.Text = p.Name; List.Visible = false end)
+        end
+    end
+end
+DropBtn.MouseButton1Click:Connect(function() CreateRipple(DropBtn); List.Visible = not List.Visible; if List.Visible then RefreshPlayers() end end)
+TPBtn.MouseButton1Click:Connect(function() CreateRipple(TPBtn); if SelectedPlayer and SelectedPlayer.Character then Player.Character.HumanoidRootPart.CFrame = SelectedPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3) end end)
+
+local Grid = Instance.new("Frame", CombatTab); Grid.Size = UDim2.new(1, 0, 0, 120); Grid.Position = UDim2.new(0, 0, 0, 50); Grid.BackgroundTransparency = 1
+Instance.new("UIGridLayout", Grid).CellSize = UDim2.new(0.48, 0, 0, 35)
+
+local function AddCmd(name, id)
+    local b = Instance.new("TextButton", Grid); b.Text = name; b.BackgroundColor3 = DarkGray; b.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+    b.MouseButton1Click:Connect(function() CreateRipple(b); MarketplaceService:SignalPromptProductPurchaseFinished(Player.UserId, id, true) end)
+end
+
+AddCmd("Kill All", 3530790199); AddCmd("Fling", 3530789418); AddCmd("Kick", 3530789704); AddCmd("Freeze", 3530789503); AddCmd("Burn", 3530789560); AddCmd("Slow", 3530790344); AddCmd("Kill", 3530790245); AddCmd("Shake", 3530790280)
+
+-- 6. FARM & ITEMS
+Instance.new("UIGridLayout", FarmTab).CellSize = UDim2.new(0.48, 0, 0, 40)
+local FarmBtn = Instance.new("TextButton", FarmTab); FarmBtn.Text = "Coin Farm: Off"; FarmBtn.BackgroundColor3 = DarkGray; FarmBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", FarmBtn).CornerRadius = UDim.new(0,6)
+
+local function SetFloat(state)
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if state then
+            if not hrp:FindFirstChild("FarmFloat") then
+                local bv = Instance.new("BodyVelocity")
+                bv.Name = "FarmFloat"
+                bv.Velocity = Vector3.new(0, 0, 0)
+                bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                bv.Parent = hrp
+            end
+        else
+            if hrp:FindFirstChild("FarmFloat") then hrp.FarmFloat:Destroy() end
+        end
+    end
+end
+
+FarmBtn.MouseButton1Click:Connect(function() 
+    CreateRipple(FarmBtn)
+    CoinFarmActive = not CoinFarmActive
+    FarmBtn.Text = "Coin Farm: " .. (CoinFarmActive and "On" or "Off")
+    FarmBtn.BackgroundColor3 = CoinFarmActive and Crimson or DarkGray
+    SetFloat(CoinFarmActive)
+end)
+
+Instance.new("UIGridLayout", ItemsTab).CellSize = UDim2.new(0.48, 0, 0, 40)
+local function AddItem(name, pos)
+    local b = Instance.new("TextButton", ItemsTab); b.Text = name; b.BackgroundColor3 = DarkGray; b.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
+    b.MouseButton1Click:Connect(function() CreateRipple(b); if Player.Character then Player.Character.HumanoidRootPart.CFrame = CFrame.new(pos) end end)
+end
+AddItem("Gravity Coil", Vector3.new(-79, 98, -129)); AddItem("Speed Coil", Vector3.new(-73, 73, -80)); AddItem("Fusion Coil", Vector3.new(152, 130, -380)); AddItem("Ban Hammer", Vector3.new(483, 232, -280))
+
+-- 7. LOOPS & SMOOTH DRAGGING
+local CoinCoords = {
+    Vector3.new(58.72, 4, -153.66), Vector3.new(81.77, 4, -166.33), Vector3.new(45.03, 4, -120.22), Vector3.new(32.06, 4, -71.36), 
+    Vector3.new(74.52, 4, -41.69), Vector3.new(152.13, 129.96, -161.04), Vector3.new(173.43, 129.94, -62.24), Vector3.new(152.26, 129.96, -281.52),
+    Vector3.new(189.47, 131.00, -86.65), Vector3.new(270.09, 129.94, -146.72), Vector3.new(295.75, 129.94, -61.52), Vector3.new(313.71, 130.55, -120.90),
+    Vector3.new(374.59, 130.68, -135.58), Vector3.new(420.58, 130.80, -105.54), Vector3.new(435.16, 129.94, -148.30), Vector3.new(463.46, 129.94, -61.47),
+    Vector3.new(586.92, 129.94, -106.35), -- [UPDATED: Coordinate #17]
+    Vector3.new(511.28, 129.94, -120.65), Vector3.new(616.17, 129.95, -31.78), Vector3.new(615.84, 129.95, 22.17),
+    Vector3.new(653.14, 129.95, -106.05), Vector3.new(711.74, 129.94, -128.18), Vector3.new(722.39, 240.16, -148.19), Vector3.new(739.49, 240.16, -60.33)
+}
+
+task.spawn(function()
+    local index = 1
+    while task.wait(0.6) do
+        if CoinFarmActive and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+            SetFloat(true)
+            Player.Character.HumanoidRootPart.CFrame = CFrame.new(CoinCoords[index] + Vector3.new(0,3,0))
+            index = (index % #CoinCoords) + 1
+        end
+    end
+end)
+
+local dragStart, startPos, dragging = nil, nil, false
+Header.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true; dragStart = input.Position; startPos = Main.Position end end)
+UIS.InputChanged:Connect(function(input) 
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then 
+        local delta = input.Position - dragStart
+        local targetPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        TweenService:Create(Main, TweenInfo.new(0.15, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = targetPos}):Play()
+    end 
+end)
+UIS.InputEnded:Connect(function(input) dragging = false end)
+
+MinBtn.MouseButton1Click:Connect(function()
+    CreateRipple(MinBtn)
+    Minimised = not Minimised
+    Main:TweenSize(Minimised and UDim2.new(0, Main.Size.X.Offset, 0, 42) or MenuSize, "Out", "Quart", 0.3, true)
+    Container.Visible = not Minimised; TabBar.Visible = not Minimised; VersionLabel.Visible = not Minimised; BottomLabel.Visible = not Minimised
+end)
